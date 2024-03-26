@@ -1,59 +1,42 @@
-import eventlet
+import paho.mqtt.client as mqtt
+import requests
 import json
-from flask import Flask
-from flask_mqtt import Mqtt
-from flask_socketio import SocketIO
 
-app = Flask(__name__)
+from model.client import User, SimpleUser, LoginData, LoginSucess
 
-app.config['MQTT_BROKER_URL'] = '10.42.0.1' 
-app.config['MQTT_BROKER_PORT'] = '1883'
-app.config['MQTT_KEEPALIVE'] = 5
+topic = '/topic/user/login'
+url = 'http://0.0.0.0:5000'
 
-mqtt_client = Mqtt()
-socketio = SocketIO(app)
 
-dataJson = {
-    "topic": "chat",
-    "payload": {
-        "name": "Vini",
-        "id": "xxxxxxx"
-    }    
-}
+def on_connect(client, userdata, flags, reason_code):
+    print(f"Connected with result code {reason_code}")
 
-json_str = json.dumps(dataJson)
+    client.subscribe(topic, 2)
 
-@app.route("/")
-def index():
-#    handle_publish(json_str);
-    return {"Hello":"World"}
 
-@socketio.on('publish')
-def handle_publish(json_str):
-    data = json.loads(json_str)
-    print(data)
-    mqtt_client.publish(data['topic'], data['payload'])
+def req_login():
+    r = requests.post(url+'/login', json={'name': 'Lua', 'password': '001'})
+    ret = r.json()
+    print(ret)
 
-@socketio.on('subscribe')
-def handle_subscribe(json_str):
-    data = json.loads(json_str)
-    mqtt_client.subscribe(data['topic'])
+    
+def on_message(client, userdata, msg):
+    print(msg.topic+" "+str(msg.payload))
+   # req = msg.payload.json()
+   # print(req)
+    req_login()
+    
+def on_publish(client, userdata, result):
+    print("data published \n")
+    
+    
+mqttc = mqtt.Client()
+mqttc.on_connect = on_connect
+mqttc.on_message = on_message
+mqttc.on_publish = on_publish
 
-@socketio.on('unsubscribe_all')
-def handle_unsubscribe_all():
-    mqtt_client.unsubscribe_all()
+mqttc.connect("0.0.0.0", 1883, 60)
 
-@mqtt_client.on_message()
-def handle_mqtt_message(client, userdata, message):
-    data = dict(
-        topic=message.topic,
-        payload=message.payload.decode()
-    )
-    socketio.emit('mqtt_message', data=data)
+ret = mqttc.publish(topic, "{'user': 'Lua', 'pass': '001'}")
 
-@mqtt_client.on_log()
-def handle_logging(client, userdata, level, buf):
-    print(level, buf)
-
-if __name__ == '__main__':
-    socketio.run(app, host='0.0.0.0', port=5000, use_reloader=False, debug=True)
+mqttc.loop_forever()
