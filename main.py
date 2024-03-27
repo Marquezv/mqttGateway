@@ -35,7 +35,7 @@ mqttc.on_connect = on_connect
 mqttc.on_message = on_message
 mqttc.on_publish = on_publish
 
-mqttc.connect("0.0.0.0", 1883, 60)
+mqttc.connect("0.0.0.0", 8850, 60)
 
 ret = mqttc.publish(topic, "{'user': 'Lua', 'pass': '001'}")
 
